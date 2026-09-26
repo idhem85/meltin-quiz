@@ -1,0 +1,57 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /rooms/{room} {
+      // La salle est lisible par tous (participants).
+      allow read: if true;
+      // L'animateur doit être le seul à pouvoir créer/modifier la salle.
+      // Puisque l'app n'utilise pas d'auth Firebase pour les participants,
+      // on s'appuie sur l'admin qui possède le code de la salle.
+      // NOTE: Pour une sécurité maximale, il faudrait ajouter Firebase Auth pour l'hôte.
+      allow create, update: if true;
+      allow delete: if false;
+
+      match /players/{pid} {
+        allow read: if true;
+        // Un joueur ne peut créer/modifier que son propre document (identifié par pid).
+        allow create, update: if request.resource.data.pid == pid
+                              && request.resource.data.keys().hasOnly(['pid','pseudo','emoji','score','joinedAt'])
+                              && request.resource.data.pid is string
+                              && request.resource.data.pseudo is string
+                              && request.resource.data.pseudo.size() >= 1
+                              && request.resource.data.pseudo.size() <= 20
+                              && request.resource.data.score is number;
+        // Le joueur peut quitter la salle ou l'animateur peut le supprimer.
+        allow delete: if true;
+      }
+
+      match /answers/{pid} {
+        // On limite la lecture des réponses aux admins (en pratique, on ne peut pas
+        // restreindre sans Auth, mais on peut empêcher les participants de lire
+        // les réponses des autres si on utilise des sous-collections sécurisées).
+        allow read: if true;
+        // Un participant ne peut répondre que pour son propre pid.
+        allow create, update: if request.resource.data.pid == pid // Ajout de la vérification pid
+                              && request.resource.data.keys().hasOnly(['pid','optionIndex','text','val','questionIndex','at'])
+                              && request.resource.data.questionIndex is int
+                              && request.resource.data.questionIndex >= 0
+                              && request.resource.data.questionIndex <= 100
+                              && (
+                                // QCM (0-3) / échelle (0-9) : index d'option
+                                (request.resource.data.optionIndex is int
+                                 && request.resource.data.optionIndex >= 0
+                                 && request.resource.data.optionIndex <= 15)
+                                // Nuage de mots : texte court
+                                || (request.resource.data.text is string
+                                    && request.resource.data.text.size() >= 1
+                                    && request.resource.data.text.size() <= 80)
+                                // Estimation : nombre fini raisonnable
+                                || (request.resource.data.val is number
+                                    && request.resource.data.val.abs() < 1e12)
+                              );
+        allow delete: if true;
+      }
+    }
+  }
+}
