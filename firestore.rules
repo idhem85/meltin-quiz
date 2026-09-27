@@ -35,12 +35,18 @@ service cloud.firestore {
                     && request.resource.data.quiz.size() <= 60
                     && request.resource.data.quizTitle is string
                     && request.resource.data.quizTitle.size() <= 120;
-      // patchState() fait des merges arbitraires (status, lastResults,
-      // podium…) : sans Auth, on borne les champs mais on laisse passer.
+      // patchState() fait des merges bornés (status, timer Big Quiz,
+      // résultats, podium, thème, quiz du dashboard).
       allow update: if request.resource.data.diff(resource.data).affectedKeys()
                       .hasOnly(['status', 'questionIndex', 'lastResults',
-                                'podium', 'theme', 'quiz', 'quizTitle'])
-                    && request.resource.data.status in ['waiting', 'question', 'results', 'podium'];
+                                'podium', 'theme', 'quiz', 'quizTitle',
+                                'questionEndsAt'])
+                    && request.resource.data.status in ['waiting', 'question', 'results', 'podium']
+                    // Échéance du timer : époche ms plausible (±24 h)
+                    && (request.resource.data.questionEndsAt == null
+                        || (request.resource.data.questionEndsAt is number
+                            && request.resource.data.questionEndsAt < request.time.toMillis() + 86400000
+                            && request.resource.data.questionEndsAt > request.time.toMillis() - 86400000));
       allow delete: if false;
 
       /* ── Participants ─────────────────────────────────────────── */
@@ -71,26 +77,28 @@ service cloud.firestore {
 
       /* ── Réponses (1 doc max par participant, id = pid) ───────── */
       match /answers/{pid} {
-        function optInt(v) { return v is int && v >= 0 && v <= 15; }
         allow read: if true;   // l'animateur agrège ; les non-connectés lisent lastResults sinon
         allow create, update: if pid.matches('p_[a-z0-9]{6,12}')
                               && request.resource.data.keys().hasOnly(
                                    ['questionIndex', 'at', 'optionIndex', 'text', 'val'])
+                              && request.resource.data.keys().hasAny(['optionIndex', 'text', 'val'])
                               && request.resource.data.questionIndex is int
                               && request.resource.data.questionIndex >= 0
                               && request.resource.data.questionIndex <= 60
                               && request.resource.data.at is timestamp
-                              && request.resource.data.keys().hasAny(['optionIndex', 'text', 'val'])
                               && (
                                    (request.resource.data.keys().hasOnly(['questionIndex', 'at', 'optionIndex'])
-                                    && optInt(request.resource.data.optionIndex))
+                                    && request.resource.data.optionIndex is int
+                                    && request.resource.data.optionIndex >= 0
+                                    && request.resource.data.optionIndex <= 15)
                                 || (request.resource.data.keys().hasOnly(['questionIndex', 'at', 'text'])
                                     && request.resource.data.text is string
                                     && request.resource.data.text.size() >= 1
                                     && request.resource.data.text.size() <= 80)
                                 || (request.resource.data.keys().hasOnly(['questionIndex', 'at', 'val'])
                                     && request.resource.data.val is number
-                                    && request.resource.data.val.abs() < 1e12)
+                                    && request.resource.data.val > -1000000000000
+                                    && request.resource.data.val < 1000000000000)
                               );
         // Purge entre les questions (clearAnswers) + kick.
         allow delete: if true;
