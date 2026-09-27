@@ -127,13 +127,44 @@
   }
   const SNAPSHOT_RATE = 350;   // ms — imperceptible à l'œil, ÷3 le re-rendu
 
+  /* ════════ CONFIG CLOUD (quiz + thème du dashboard) ════════
+     Un document unique config/dashboard porte le quiz et le thème
+     officiels : édités depuis n'importe quel appareil, lus partout.
+     Le localStorage reste un cache local de repli (mode démo). */
+  const configRef = () => fs().collection('config').doc('dashboard');
+  const fbConfigLoad = async () => {
+    try {
+      const snap = await configRef().get();
+      if (!snap.exists) return null;
+      const d = snap.data();
+      return { quiz: Array.isArray(d.quiz) ? d.quiz : null, theme: d.theme || null, updatedAt: d.updatedAt || null };
+    } catch (e) { return null; }
+  };
+  const fbConfigSave = async (quiz, theme) => {
+    try {
+      await configRef().set({ quiz, theme, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+      return true;
+    } catch (e) { return false; }
+  };
+
   const fbApi = {
     host(room, cbs) {
-      roomRef(room).get().then((snap) => {
+      roomRef(room).get().then(async (snap) => {
         if (!snap.exists) {
+          /* La salle embarque le quiz + thème OFFICIELS du cloud
+             (repli : localStorage, puis défauts). */
+          let quiz0 = null, theme0 = null;
+          try {
+            const cfg = await configRef().get();
+            if (cfg.exists) {
+              const d = cfg.data();
+              if (Array.isArray(d.quiz) && d.quiz.length) quiz0 = d.quiz;
+              if (d.theme) theme0 = d.theme;
+            }
+          } catch (e) { /* hors ligne : repli local */ }
           roomRef(room).set({
             room, status: 'waiting', questionIndex: -1,
-            quiz: defQuiz(), quizTitle: window.IB_CONFIG.QUIZ_TITLE, theme: null,
+            quiz: quiz0 || defQuiz(), quizTitle: window.IB_CONFIG.QUIZ_TITLE, theme: theme0,
             lastResults: null, podium: null,
             createdAt: firebase.firestore.FieldValue.serverTimestamp(),
           }).catch((e) => cbs.onError('Création salle : ' + e.code));
@@ -195,5 +226,14 @@
     kick(room, pid) { roomRef(room).collection('players').doc(pid).delete().catch(() => {}); },
   };
 
-  window.IB.sync = { demoMode, ...(demoMode ? demoApi : fbApi) };
+  /* API unifiée : en ligne, quiz/thème du dashboard passent par le
+     cloud ; en démo, par le localStorage (comportement historique). */
+  window.IB.sync = {
+    demoMode,
+    ...(demoMode ? demoApi : {
+      ...fbApi,
+      loadDashboard: fbConfigLoad,
+      saveDashboard: fbConfigSave,
+    }),
+  };
 })();

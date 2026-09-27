@@ -105,6 +105,21 @@ service cloud.firestore {
       }
     }
 
+    /* ── Configuration officielle du dashboard (quiz + thème) ──
+       Un seul document, éditable depuis n'importe quel appareil :
+       c'est la source de vérité, le localStorage n'est qu'un cache. */
+    match /config/dashboard {
+      allow read: if true;
+      allow create, update: if request.resource.data.diff(resource.data).affectedKeys()
+                              .hasOnly(['quiz', 'theme', 'updatedAt'])
+                            && request.resource.data.quiz is list
+                            && request.resource.data.quiz.size() <= 60
+                            && request.resource.data.theme.get('preset', '') is string
+                            && request.resource.data.theme.get('preset', '').size() <= 40
+                            && request.resource.data.theme.get('vars', {}).keys().size() <= 40;
+      allow delete: if false;
+    }
+
     /* Tout le reste est interdit : pas d'autre collection accessible. */
     match /{document=**} {
       allow read, write: if false;

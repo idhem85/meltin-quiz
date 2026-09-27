@@ -292,21 +292,50 @@
     const [quiz, setQuiz] = useState(U().loadQuiz());
     const [theme, setTheme] = useState(U().store.get('theme', { preset: 'navy', vars: {} }));
     const [savedFlash, setSavedFlash] = useState(false);
+    const [saveState, setSaveState] = useState('');     // '' | 'saving…' | '✅ cloud' | '⚠️ local' | '✗'
     const [importText, setImportText] = useState('');
     const [importErr, setImportErr] = useState('');
 
     /* Live preview du style pendant l'édition */
     useEffect(() => { window.IB.theme.applyTheme(theme); }, [theme]);
 
+    /* Au montage : la source officielle est le CLOUD (config/dashboard).
+       On remplace l'état local si le cloud a une version — évite les
+       divergences entre appareils/navigateurs/domaines. */
+    useEffect(() => {
+      if (!window.IB.sync.loadDashboard) return;      // mode démo : localStorage only
+      let dead = false;
+      window.IB.sync.loadDashboard().then((cfg) => {
+        if (dead || !cfg) return;
+        if (Array.isArray(cfg.quiz) && cfg.quiz.length) {
+          setQuiz(cfg.quiz);
+          U().saveQuiz(cfg.quiz);
+        }
+        if (cfg.theme) {
+          setTheme(cfg.theme);
+          window.IB.theme.applyTheme(cfg.theme);
+          U().store.set('theme', cfg.theme);
+        }
+      });
+      return () => { dead = true; };
+    }, []);
+
     const phases = [...new Set(quiz.map((q) => q.phase).filter(Boolean))];
 
-    const save = (nextQuiz, nextTheme) => {
+    const save = async (nextQuiz, nextTheme) => {
       const cleanQuiz = U().sanitizeQuiz(nextQuiz);
-      U().saveQuiz(cleanQuiz);
+      U().saveQuiz(cleanQuiz);                        // cache local (repli + mode démo)
       U().store.set('theme', nextTheme);
       setQuiz(cleanQuiz);
       setSavedFlash(true);
       setTimeout(() => setSavedFlash(false), 1500);
+      /* Source officielle : le cloud (tous les appareils verront ceci) */
+      if (window.IB.sync.saveDashboard) {
+        setSaveState('saving…');
+        const ok = await window.IB.sync.saveDashboard(cleanQuiz, nextTheme);
+        setSaveState(ok ? '✅ cloud' : '⚠️ local seul');
+        setTimeout(() => setSaveState(''), 2500);
+      }
     };
 
     const updateQ = (i, nq) => setQuiz(quiz.map((x, j) => (j === i ? nq : x)));
@@ -351,6 +380,7 @@
             <button onClick={onBack} className="btn-ghost shrink-0">← Retour</button>
             <h1 className="font-display text-xl sm:text-2xl font-black flex-1 min-w-0 truncate">🎛️ Dashboard</h1>
             {savedFlash && <span className="text-emerald-300 text-sm font-semibold fade-in-up">✅</span>}
+            {saveState && <span className={'text-xs font-semibold fade-in ' + (saveState.startsWith('✅') ? 'text-emerald-300' : saveState.startsWith('⚠️') ? 'text-amber-300' : 'text-slate-400')}>{saveState}</span>}
             <button onClick={() => { U().store.del('admin_unlocked_until'); location.hash = '#/'; }}
               title="Re-verrouiller le dashboard" className="btn-ghost shrink-0">🔒</button>
             <button onClick={() => save(quiz, theme)} className="btn-primary shrink-0">💾 Enregistrer</button>

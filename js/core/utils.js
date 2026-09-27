@@ -39,7 +39,8 @@ IB.util = (() => {
     del(key) { try { localStorage.removeItem('ib_' + key); } catch (e) {} },
   };
 
-  /* Quiz courant : dashboard > localStorage > défaut */
+  /* Quiz courant : cache local (repli) > défaut.
+     La source officielle en ligne est config/dashboard (via sync). */
   const loadQuiz = () => store.get('quiz', window.IB_DEFAULT_QUIZ);
   const saveQuiz = (quiz) => store.set('quiz', quiz);
   const resetQuiz = () => { store.del('quiz'); return window.IB_DEFAULT_QUIZ; };
