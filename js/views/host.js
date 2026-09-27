@@ -158,9 +158,12 @@
     const badge = U().typeBadge(q);
     return (
       <div className="min-h-screen flex flex-col px-6 py-8 max-w-5xl mx-auto w-full fade-in-up">
-        <div className="flex items-center justify-between mb-6 gap-2 flex-wrap">
-          <span className="glass rounded-full px-4 py-1.5 text-sm font-mono text-violet-300">Résultats — Q{qIndex + 1}/{total}</span>
-          <span className="text-sm bg-violet-500/10 border border-violet-400/30 text-violet-300 rounded-full px-3 py-1">{badge.icon} {badge.label}</span>
+        {/* En-tête centré : libère les coins (bouton ⛶, hint projection) */}
+        <div className="flex flex-col items-center gap-2 mb-6">
+          <div className="flex items-center gap-2 flex-wrap justify-center">
+            <span className="glass rounded-full px-4 py-1.5 text-sm font-mono text-violet-300">Résultats — Q{qIndex + 1}/{total}</span>
+            <span className="text-sm bg-violet-500/10 border border-violet-400/30 text-violet-300 rounded-full px-3 py-1">{badge.icon} {badge.label}</span>
+          </div>
           <span className="text-sm" style={{ color: 'var(--text-dim)' }}>{results ? results.total : 0} réponse(s) · {playerCount} joueur(s)</span>
         </div>
         <h1 className="host-title-xl font-display font-black text-center mb-10 leading-tight">{q.question}</h1>
@@ -315,7 +318,7 @@
                 utilisateur — on la propose en un clic, puis plus jamais
                 (masquée en inactivité, rejetable pour la session). */}
             {!hidden && !fs && !inviteOff && (
-              <div className="proj-invite fixed top-4 left-1/2 -translate-x-1/2 z-40 fade-in-up">
+              <div className="proj-invite fixed bottom-24 left-1/2 -translate-x-1/2 z-40 fade-in-up">
                 <div className="glass-strong rounded-full pl-5 pr-2 py-2 flex items-center gap-3">
                   <span className="text-sm text-slate-300">🎥 Mode projection</span>
                   <button onClick={toggleFs}
@@ -332,7 +335,7 @@
               {fs ? '🗗' : '⛶'}
             </button>
             {hidden && (
-              <div className="proj-hint fixed top-4 right-16 z-40 fade-in" title="Bougez la souris pour afficher les contrôles">
+              <div className="proj-hint fixed bottom-6 left-1/2 -translate-x-1/2 z-40 fade-in" title="Bougez la souris pour afficher les contrôles">
                 <span className="glass rounded-full px-3 py-1.5 text-xs text-slate-400 flex items-center gap-2">
                   <span className="w-1.5 h-1.5 rounded-full bg-cyan-400/60 animate-pulse"></span>
                   Contrôles masqués
