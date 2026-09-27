@@ -28,6 +28,12 @@
       return () => window.removeEventListener('hashchange', onHash);
     }, []);
 
+    /* Lien QR scanné (?room=CODE sans #) : sauter l'accueil, aller
+       directement à la saisie du pseudo. */
+    useEffect(() => {
+      if (U.getRoomParam() && !window.location.hash) location.hash = '#/join';
+    }, []);
+
     const goJoin = (code) => { setRoom(code); U.setRoomParam(code); location.hash = '#/join'; };
     const goCreate = () => {
       const c = U.genRoomCode();
