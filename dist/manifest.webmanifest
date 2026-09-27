@@ -1,0 +1,20 @@
+{
+  "name": "MELTIN QUIZ",
+  "short_name": "MELTIN",
+  "description": "Quiz & icebreakers interactifs en temps réel — jusqu'à 300 participants.",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0b1226",
+  "theme_color": "#0b1226",
+  "lang": "fr",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A7%A0%3C/text%3E%3C/svg%3E",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#0b1226" />
+<meta name="description" content="MELTIN & Quiz interactif temps réel — jusqu'à 300 participants. L'esprit de Kahoot, l'élégance de Mentimeter, la simplicité de Slido." />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="MELTIN QUIZ" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A7%A0%3C/text%3E%3C/svg%3E" />
+<link rel="manifest" href="manifest.webmanifest" />
+<title>MELTIN QUIZ — Quiz interactif temps réel</title>
+
+<!-- Design system (variables thémables + composants) -->
+<link rel="stylesheet" href="css/styles.css" />
+<!-- Polices : Inter (base) ; la police des titres est chargée dynamiquement -->
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Poppins:wght@600;700;800;900&display=swap" rel="stylesheet" />
+
+<!-- Tailwind JIT runtime : configuration inline (remplace le Play CDN)
+     ⚠️ En production, préférez une compilation statique (CLI Tailwind)
+     générant un CSS pur — voir README. -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    darkMode: 'class',
+    theme: { extend: { fontFamily: { sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'] } } },
+  };
+</script>
+
+<!-- React 18 UMD (production) -->
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<!-- Scripts compilés par esbuild (aucun Babel runtime en production) -->
+<!-- Firebase compat v10 (inutilisé tant que FIREBASE_CONFIG.apiKey est vide) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<!-- Génération locale du QR code -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+<!-- Application : ordre important.
+     - Scripts classiques (pas de JSX) : config, data, core
+     - Scripts JSX : précompilés par esbuild (voir build-dist.mjs),
+       exécutés dans l'ordre : components → views → app -->
+<script src="js/config.js"></script>
+<script src="js/data/defaultQuiz.js"></script>
+<script src="js/core/utils.js"></script>
+<script src="js/core/results.js"></script>
+<script src="js/core/theme.js"></script>
+<script src="js/core/sync.js"></script>
+<script defer src="js/ui/components.js"></script>
+<script defer src="js/views/home.js"></script>
+<script defer src="js/views/participant.js"></script>
+<script defer src="js/views/host.js"></script>
+<script defer src="js/views/dashboard.js"></script>
+</head>
+
+<body>
+<div class="blob blob-cyan" aria-hidden="true"></div>
+<div class="blob blob-violet" aria-hidden="true"></div>
+<div class="blob blob-emerald" aria-hidden="true"></div>
+<div class="grid-bg" aria-hidden="true"></div>
+
+<div id="root" class="relative z-10 min-h-screen"></div>
+
+<!-- Vues + routeur : précompilés par esbuild -->
+<script defer src="js/app.js"></script>
+
+<!-- PWA : enregistrement du service worker -->
+<script>
+  if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+    window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+  }
+</script>
+</body>
+</html>

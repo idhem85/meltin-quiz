@@ -1,5 +1,5 @@
 node_modules
-dist
 .freebuff/
 .claude/
 .DS_Store
+preview-*.html

@@ -1,0 +1,200 @@
+/* ════════════════════════════════════════════════════════════════
+   MELTIN QUIZ — Design System
+   Les variables --* sont surchargées à l'exécution par le thème
+   (voir js/core/theme.js et le dashboard #/admin).
+════════════════════════════════════════════════════════════════ */
+:root {
+  --bg: #0b1226;
+  --bg-2: #101a33;
+  --bg-3: #1b2540;
+  --accent: #22d3ee;
+  --accent-2: #a78bfa;
+  --accent-3: #34d399;
+  --text: #f1f5f9;
+  --text-dim: #94a3b8;
+  --radius: 1.25rem;
+  --font-display: 'Poppins', sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  background:
+    radial-gradient(1200px 800px at 80% -10%, color-mix(in srgb, var(--accent-2) 14%, transparent), transparent 60%),
+    radial-gradient(1000px 700px at -10% 110%, color-mix(in srgb, var(--accent) 12%, transparent), transparent 60%),
+    var(--bg);
+  color: var(--text);
+  font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+  overflow-x: hidden;
+  overscroll-behavior-y: none;
+}
+.font-display { font-family: var(--font-display); }
+
+/* Décor : halos flous animés */
+.blob { position: fixed; border-radius: 9999px; filter: blur(90px); opacity: .30; pointer-events: none; z-index: 0; animation: floatBlob 16s ease-in-out infinite; }
+.blob-cyan    { background: var(--accent);   top: -6rem;   left: -6rem;  width: 30rem; height: 30rem; }
+.blob-violet  { background: var(--accent-2); bottom: -8rem; right: -6rem; width: 34rem; height: 34rem; animation-delay: -6s; }
+.blob-emerald { background: var(--accent-3); bottom: 22%;   left: 32%;    width: 20rem; height: 20rem; opacity: .16; animation-delay: -11s; }
+@keyframes floatBlob {
+  0%,100% { transform: translate(0,0) scale(1); }
+  33%     { transform: translate(46px,-38px) scale(1.14); }
+  66%     { transform: translate(-34px,30px) scale(0.92); }
+}
+.grid-bg {
+  position: fixed; inset: 0; pointer-events: none; opacity: .05; z-index: 0;
+  background-image: linear-gradient(rgba(148,163,184,.35) 1px, transparent 1px), linear-gradient(90deg, rgba(148,163,184,.35) 1px, transparent 1px);
+  background-size: 56px 56px;
+}
+
+/* Glassmorphism */
+.glass {
+  background: color-mix(in srgb, var(--bg-2) 55%, transparent);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border: 1px solid rgba(255,255,255,.09);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 32px rgba(2,6,23,.45);
+}
+.glass-strong {
+  background: color-mix(in srgb, var(--bg-2) 80%, transparent);
+  backdrop-filter: blur(26px);
+  -webkit-backdrop-filter: blur(26px);
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: var(--radius);
+  box-shadow: 0 16px 48px rgba(2,6,23,.55);
+}
+.text-glow { text-shadow: 0 0 18px color-mix(in srgb, var(--accent) 55%, transparent), 0 0 46px color-mix(in srgb, var(--accent) 25%, transparent); }
+
+/* Animations */
+@keyframes fadeInUp { from { opacity: 0; transform: translateY(22px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes scaleIn  { from { opacity: 0; transform: scale(.92); }    to { opacity: 1; transform: scale(1); } }
+@keyframes shake { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-7px); } 75% { transform: translateX(7px); } }
+.fade-in-up { animation: fadeInUp .55s cubic-bezier(.22,1,.36,1) both; }
+.scale-in   { animation: scaleIn .4s  cubic-bezier(.22,1,.36,1) both; }
+.shake      { animation: shake .4s ease-in-out; }
+
+/* Barres de résultats : montée fluide 0 → X% */
+.result-bar-fill { transition: width 1s cubic-bezier(.22,1,.36,1); }
+
+/* Boutons de réponse : effet « pressed » */
+.answer-btn { transition: transform .12s ease, filter .15s ease, box-shadow .2s ease; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+.answer-btn:not(:disabled):active, .answer-btn.pressed { transform: scale(.94); filter: brightness(1.25); }
+.answer-btn:disabled { cursor: default; }
+.btn-a { background: linear-gradient(145deg,#fb7185,#e11d48); box-shadow: 0 12px 34px -10px rgba(225,29,72,.55), inset 0 1px 0 rgba(255,255,255,.25); }
+.btn-b { background: linear-gradient(145deg,#60a5fa,#2563eb); box-shadow: 0 12px 34px -10px rgba(37,99,235,.55), inset 0 1px 0 rgba(255,255,255,.25); }
+.btn-c { background: linear-gradient(145deg,#fbbf24,#d97706); box-shadow: 0 12px 34px -10px rgba(217,119,6,.55), inset 0 1px 0 rgba(255,255,255,.3); }
+.btn-d { background: linear-gradient(145deg,#34d399,#059669); box-shadow: 0 12px 34px -10px rgba(5,150,105,.55), inset 0 1px 0 rgba(255,255,255,.25); }
+
+/* Bande défilante du lobby */
+@keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+.marquee-track { display: inline-flex; white-space: nowrap; animation: marquee 26s linear infinite; }
+
+/* QR code : le conteneur généré par qrcodejs est un <table>/<img> — on le
+   contraint au parent pour qu'il ne puisse jamais déborder sur mobile. */
+.qr-wrap img, .qr-wrap table { max-width: 100% !important; height: auto !important; }
+
+/* Dashboard : formulaires */
+.dash-input, .dash-select, .dash-textarea {
+  width: 100%;
+  background: color-mix(in srgb, var(--bg) 70%, transparent);
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: calc(var(--radius) * .6);
+  padding: .65rem .9rem;
+  color: var(--text);
+  font-size: .925rem;
+  outline: none;
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+.dash-input:focus, .dash-select:focus, .dash-textarea:focus {
+  border-color: color-mix(in srgb, var(--accent) 60%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+.dash-label { display: block; font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; color: var(--text-dim); margin-bottom: .35rem; font-weight: 600; }
+.dash-card { background: color-mix(in srgb, var(--bg-2) 60%, transparent); border: 1px solid rgba(255,255,255,.08); border-radius: var(--radius); padding: 1rem; }
+.btn-primary {
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  color: #06121f;
+  font-weight: 700;
+  border: none;
+  border-radius: calc(var(--radius) * .6);
+  padding: .65rem 1.1rem;
+  cursor: pointer;
+  transition: transform .12s ease, filter .15s ease;
+}
+.btn-primary:hover { filter: brightness(1.12); }
+.btn-primary:active { transform: scale(.96); }
+.btn-primary:disabled { opacity: .35; cursor: not-allowed; }
+.btn-ghost {
+  background: transparent; color: var(--text-dim);
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: calc(var(--radius) * .6);
+  padding: .55rem .95rem; cursor: pointer; font-weight: 600;
+  transition: background .15s ease, color .15s ease;
+}
+.btn-ghost:hover { background: rgba(255,255,255,.06); color: var(--text); }
+.btn-danger { background: rgba(244,63,94,.12); color: #fda4af; border: 1px solid rgba(244,63,94,.35); }
+.btn-danger:hover { background: rgba(244,63,94,.2); }
+
+/* Scrollbar discrète */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-thumb { background: rgba(148,163,184,.25); border-radius: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+
+/* ════════════════════════════════════════════════════════════════
+   MOBILE FIRST — garde-fous anti-débordement (≤ 480 px)
+════════════════════════════════════════════════════════════════ */
+html, body { max-width: 100%; }
+img, svg, video, canvas, code, pre { max-width: 100%; }
+input, select, textarea, button { font-size: 16px; }  /* anti-zoom iOS */
+
+/* Texte long insecable : les questions/questions FR ne cassent pas seules */
+h1, h2, .break-words { overflow-wrap: break-word; word-wrap: break-word; }
+
+/* Titres géants du host : clamp au lieu de tailwind sm:/lg: seuls */
+.host-title { font-size: clamp(1.6rem, 6.5vw, 3.75rem); }
+.host-title-xl { font-size: clamp(1.35rem, 5vw, 3rem); }
+
+@media (max-width: 480px) {
+  .blob { filter: blur(60px); opacity: .22; }             /* perf mobile */
+  .glass, .glass-strong { border-radius: calc(var(--radius) * .8); }
+
+  /* Lobby : QR + code côte à côte → empilés, URL tronquée proprement */
+  .lobby-url { max-width: 100%; }
+
+  /* Barre de contrôle flottante : pleine largeur, boutons étirés.
+     !important pour vaincre -translate-x-1/2 de Tailwind. */
+  .host-controls { left: .75rem !important; right: .75rem !important; transform: none !important; width: auto !important; }
+  .host-controls .ctrl-bar { width: 100%; justify-content: stretch; }
+  .host-controls button { flex: 1 1 auto; justify-content: center; }
+
+  /* Bandeau défilant : plus discret */
+  .marquee-track { animation-duration: 34s; }
+}
+
+/* Mode projection : masquage doux de la barre de contrôle + pastille.
+   Le bouton ⛶ reste visible partout (desktop inclus) : c'est la seule
+   porte d'entrée au plein écran si l'invite a été rejetée. */
+.proj-fs-btn { opacity: .75; transition: opacity .3s; }
+.proj-fs-btn:hover { opacity: 1; }
+.proj-hint { opacity: .8; transition: opacity .4s; }
+.proj-invite { transition: opacity .4s; }
+.host-controls { transition: opacity .6s cubic-bezier(.4,0,.2,1); }
+/* !important : nécessaire pour battre l'animation fade-in-up (fill forwards)
+   qui épingle opacity à 1 sinon. */
+.host-controls.proj-hidden { opacity: 0 !important; pointer-events: none; }
+
+/* Podium mobile : blocs côte à côte plus étroits mais lisibles */
+@media (max-width: 420px) {
+  .podium-col { width: 4.5rem; }
+}
+
+/* Respect des préférences système */
+@media (prefers-reduced-motion: reduce) {
+  .blob, .marquee-track { animation: none; }
+  .fade-in-up, .scale-in { animation-duration: .01s; }
+  .result-bar-fill { transition-duration: .2s; }
+}
