@@ -66,8 +66,11 @@ service cloud.firestore {
         // jamais de réécriture du pseudo/pid, score toujours borné.
         // NB : avec un FieldValue.increment, request.resource.data.score
         // est résolu par le moteur de règles à la valeur résultante.
+        // NB : FieldValue.increment est résolu à la valeur résultante dans
+        // request.resource.data.score ; affectedKeys() suffit à garantir
+        // que score est le seul champ touché. La borne 0..300 fait le
+        // reste du travail anti-triche.
         allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly(['score'])
-                      && request.resource.data.diff(resource.data).transformations.hasOnly(['score'])
                       && request.resource.data.score is number
                       && request.resource.data.score >= 0
                       && request.resource.data.score <= 300;
@@ -110,13 +113,20 @@ service cloud.firestore {
        c'est la source de vérité, le localStorage n'est qu'un cache. */
     match /config/dashboard {
       allow read: if true;
-      allow create, update: if request.resource.data.diff(resource.data).affectedKeys()
-                              .hasOnly(['quiz', 'theme', 'updatedAt'])
-                            && request.resource.data.quiz is list
-                            && request.resource.data.quiz.size() <= 60
-                            && request.resource.data.theme.get('preset', '') is string
-                            && request.resource.data.theme.get('preset', '').size() <= 40
-                            && request.resource.data.theme.get('vars', {}).keys().size() <= 40;
+      function validTheme(t) {
+        return !(t is map) || (t.keys().hasOnly(['preset', 'vars'])
+          && (!('preset' in t) || (t.preset is string && t.preset.size() <= 40))
+          && (!('vars' in t) || (t.vars is map && t.vars.keys().size() <= 40)));
+      }
+      function validCfg(d) {
+        return d.quiz is list && d.quiz.size() <= 60 && validTheme(d.theme);
+      }
+      /* create : resource.data n'existe pas encore — pas de diff() */
+      allow create: if request.resource.data.keys().hasOnly(['quiz', 'theme', 'updatedAt'])
+                    && validCfg(request.resource.data);
+      allow update: if request.resource.data.diff(resource.data).affectedKeys()
+                      .hasOnly(['quiz', 'theme', 'updatedAt'])
+                    && validCfg(request.resource.data);
       allow delete: if false;
     }
 
