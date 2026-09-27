@@ -175,6 +175,18 @@ h1, h2, .break-words { overflow-wrap: break-word; word-wrap: break-word; }
   .marquee-track { animation-duration: 34s; }
 }
 
+/* Mode projection : masquage doux de la barre de contrôle + pastille.
+   Le bouton ⛶ reste visible partout (desktop inclus) : c'est la seule
+   porte d'entrée au plein écran si l'invite a été rejetée. */
+.proj-fs-btn { opacity: .75; transition: opacity .3s; }
+.proj-fs-btn:hover { opacity: 1; }
+.proj-hint { opacity: .8; transition: opacity .4s; }
+.proj-invite { transition: opacity .4s; }
+.host-controls { transition: opacity .6s cubic-bezier(.4,0,.2,1); }
+/* !important : nécessaire pour battre l'animation fade-in-up (fill forwards)
+   qui épingle opacity à 1 sinon. */
+.host-controls.proj-hidden { opacity: 0 !important; pointer-events: none; }
+
 /* Podium mobile : blocs côte à côte plus étroits mais lisibles */
 @media (max-width: 420px) {
   .podium-col { width: 4.5rem; }

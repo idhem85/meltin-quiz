@@ -7,8 +7,11 @@
   const U = () => window.IB.util;
   const R = () => window.IB.results;
   const OPT_LABEL = () => window.IB_CONFIG.OPT_LABEL;
+  /* Contexte : l'état « contrôles masqués » diffuse aux boutons sans
+     re-rendre les grands écrans (perf vidéoprojecteur). */
+  const ProjCtx = React.createContext({ hidden: false });
 
-  function HostLobby({ room, joinUrl, players, onKick, onStart, quizTitle }) {
+  function HostLobby({ room, joinUrl, players, onKick, onStart, onExit, quizTitle }) {
     const [copied, setCopied] = useState(false);
     const [search, setSearch] = useState('');
     // Plafond de rendu : 150 chips max (le compteur, lui, reste exact).
@@ -24,6 +27,14 @@
     };
     return (
       <div className="min-h-screen px-3 sm:px-4 py-6 sm:py-8 pb-20 fade-in-up">
+        <div className="max-w-6xl mx-auto">
+          {/* Retour accueil (le lobby n'a pas de barre de contrôle) — dans le
+              flux pour ne jamais chevaucher le badge mode sur mobile */}
+          <button onClick={onExit} title="Retour à l'accueil"
+            className="glass rounded-xl px-4 py-2 text-sm font-semibold hover:bg-white/10 transition inline-flex items-center gap-2 active:scale-95 mb-3">
+            ← Accueil
+          </button>
+        </div>
         <div className="max-w-6xl mx-auto grid lg:grid-cols-2 gap-8 items-start">
           <div className="text-center lg:text-left min-w-0">
             <div className="inline-block glass px-4 py-1.5 text-xs font-semibold tracking-widest text-cyan-300 mb-4">
@@ -196,9 +207,10 @@
   }
 
   function HostControls({ phase, onClose, onNext, onRestart, onExit, isLast, answersCount }) {
+    const { hidden: projDim } = React.useContext(ProjCtx);
     const btn = 'px-5 py-2.5 rounded-xl font-bold text-sm transition-all active:scale-95 flex items-center gap-2';
     return (
-      <div className="host-controls fixed bottom-5 left-1/2 -translate-x-1/2 z-40 fade-in-up">
+      <div className={'host-controls fixed bottom-5 left-1/2 -translate-x-1/2 z-40 fade-in-up' + (projDim ? ' proj-hidden' : '')}>
         <div className="ctrl-bar glass-strong px-4 py-3 flex items-center gap-2.5 flex-wrap justify-center">
           {phase === 'question' && (
             <React.Fragment>
@@ -218,6 +230,118 @@
           <button onClick={onExit} title="Quitter" className={btn + ' glass hover:bg-white/10'}>✕</button>
         </div>
       </div>
+    );
+  }
+
+  /* ──────────────────────────────────────────────────────────────
+     MODE PROJECTION — plein écran + masquage auto des contrôles.
+     - requestProjection() : Fullscreen API + verrou paysage (mobiles)
+     - idle : 4 s sans souris/toucher/clavier → la barre s'estompe
+       (opacity-0 pointer-events-none), une pastille discrète signale
+       que les contrôles sont cachés ; un mouvement les ramène.
+     - « F » bascule le plein écran au clavier.
+  ─────────────────────────────────────────────────────────────────── */
+  function Projection({ children, enabled }) {
+    const [fs, setFs] = useState(false);
+    const [hidden, setHidden] = useState(false);
+    const [inviteOff, setInviteOff] = useState(() => {
+      try { return sessionStorage.getItem('ib_proj_invite') === 'off'; } catch (e) { return false; }
+    });
+    const timer = useRef(null);
+
+    useEffect(() => {
+      const onFsChange = () => setFs(!!document.fullscreenElement);
+      document.addEventListener('fullscreenchange', onFsChange);
+      return () => document.removeEventListener('fullscreenchange', onFsChange);
+    }, []);
+
+    /* Auto-masquage : armé après chaque interaction, uniquement en
+       question/résultats/podium (jamais sur le lobby). */
+    useEffect(() => {
+      if (!enabled) { setHidden(false); clearTimeout(timer.current); return; }
+      const wake = () => {
+        setHidden(false);
+        clearTimeout(timer.current);
+        timer.current = setTimeout(() => setHidden(true), 4000);
+      };
+      wake();
+      const evts = ['mousemove', 'mousedown', 'touchstart', 'keydown'];
+      evts.forEach((e) => window.addEventListener(e, wake, { passive: true }));
+      return () => {
+        clearTimeout(timer.current);
+        evts.forEach((e) => window.removeEventListener(e, wake));
+      };
+    }, [enabled]);
+
+    /* « F » = toggle plein écran */
+    useEffect(() => {
+      const onKey = (e) => {
+        if (enabled && (e.key === 'f' || e.key === 'F') && !e.target.matches('input, textarea, select')) {
+          toggleFs();
+        }
+      };
+      window.addEventListener('keydown', onKey);
+      return () => window.removeEventListener('keydown', onKey);
+    }, [enabled]);
+
+    const toggleFs = () => {
+      const el = document.documentElement;
+      try {
+        if (document.fullscreenElement || document.webkitFullscreenElement) {
+          if (document.exitFullscreen) document.exitFullscreen().catch(() => {});
+          else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+        } else {
+          const req = el.requestFullscreen || el.webkitRequestFullscreen;
+          if (!req) return;
+          const p = req.call(el);
+          if (p && p.then) p.then(() => {
+            try { if (screen.orientation && screen.orientation.lock) screen.orientation.lock('landscape').catch(() => {}); } catch (e) {}
+          }).catch(() => {});
+        }
+      } catch (e) {}
+    };
+
+    const dismissInvite = () => {
+      setInviteOff(true);
+      try { sessionStorage.setItem('ib_proj_invite', 'off'); } catch (e) {}
+    };
+
+    return (
+      <ProjCtx.Provider value={{ hidden }}>
+        {children}
+        {enabled && (
+          <React.Fragment>
+            {/* Invite plein écran : les navigateurs exigent un geste
+                utilisateur — on la propose en un clic, puis plus jamais
+                (masquée en inactivité, rejetable pour la session). */}
+            {!hidden && !fs && !inviteOff && (
+              <div className="proj-invite fixed top-4 left-1/2 -translate-x-1/2 z-40 fade-in-up">
+                <div className="glass-strong rounded-full pl-5 pr-2 py-2 flex items-center gap-3">
+                  <span className="text-sm text-slate-300">🎥 Mode projection</span>
+                  <button onClick={toggleFs}
+                    className="px-4 py-1.5 rounded-full bg-gradient-to-r from-cyan-500 to-blue-600 text-white text-sm font-bold hover:from-cyan-400 transition-all active:scale-95">
+                    ⛶ Plein écran
+                  </button>
+                  <button onClick={dismissInvite} title="Ne plus afficher"
+                    className="w-7 h-7 rounded-full glass text-slate-400 hover:text-slate-200 text-xs transition">✕</button>
+                </div>
+              </div>
+            )}
+            <button onClick={toggleFs} title={fs ? 'Quitter le plein écran (F)' : 'Plein écran (F)'}
+              className="proj-fs-btn fixed top-4 right-4 z-40 glass rounded-xl w-10 h-10 flex items-center justify-center text-lg hover:bg-white/10 transition">
+              {fs ? '🗗' : '⛶'}
+            </button>
+            {hidden && (
+              <div className="proj-hint fixed top-4 right-16 z-40 fade-in" title="Bougez la souris pour afficher les contrôles">
+                <span className="glass rounded-full px-3 py-1.5 text-xs text-slate-400 flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-cyan-400/60 animate-pulse"></span>
+                  Contrôles masqués
+                </span>
+              </div>
+            )}
+          </React.Fragment>
+        )}
+      </ProjCtx.Provider>
     );
   }
 
@@ -271,34 +395,38 @@
     const answerCount = R().countAnswers(answersMap, qIndex);
     const nameOf = (pid) => { const p = players.find((x) => x.pid === pid); return p ? p.pseudo : null; };
 
+    /* Mode projection actif dès qu'une question tourne (question,
+       résultats, podium) — jamais sur le lobby (QR doit rester visible). */
+    const proj = status !== 'waiting';
+
     if (status === 'podium') {
       return (
-        <React.Fragment>
+        <Projection enabled={proj}>
           <HostPodium podium={state.podium || []} playerCount={players.length} room={room} />
           <HostControls phase="podium" onRestart={restart} onExit={onExit} />
-        </React.Fragment>
+        </Projection>
       );
     }
     if (status === 'question' && currentQ) {
       return (
-        <React.Fragment>
+        <Projection enabled={proj}>
           <HostQuestion q={currentQ} qIndex={qIndex} total={quiz.length} answerCount={answerCount} playerCount={players.length} />
           <HostControls phase="question" answersCount={answerCount} onClose={closeVotes} onRestart={restart} onExit={onExit} />
-        </React.Fragment>
+        </Projection>
       );
     }
     if (status === 'results' && currentQ) {
       const isLast = qIndex + 1 >= quiz.length;
       return (
-        <React.Fragment>
+        <Projection enabled={proj}>
           <HostResults qIndex={qIndex} total={quiz.length} q={currentQ} results={state.lastResults} playerCount={players.length} nameOf={nameOf} />
           <HostControls phase="results" isLast={isLast} onNext={nextQuestion} onRestart={restart} onExit={onExit} answersCount={answerCount} />
-        </React.Fragment>
+        </Projection>
       );
     }
     return (
       <HostLobby room={room} joinUrl={U().joinUrlFor(room)} players={players}
-        onKick={kickPlayer} onStart={() => startQuestion(0)} quizTitle={state && state.quizTitle} />
+        onKick={kickPlayer} onStart={() => startQuestion(0)} onExit={onExit} quizTitle={state && state.quizTitle} />
     );
   }
 
