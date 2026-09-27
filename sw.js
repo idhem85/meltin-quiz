@@ -7,7 +7,7 @@
 ════════════════════════════════════════════════════════════════ */
 'use strict';
 
-const CACHE = 'icebreaker-v1';
+const CACHE = 'meltin-v2';
 const LOCAL_ASSETS = [
   './',
   './index.html',
@@ -48,13 +48,15 @@ self.addEventListener('fetch', (event) => {
   const isCDN = ['unpkg.com', 'cdn.tailwindcss.com', 'fonts.googleapis.com', 'fonts.gstatic.com', 'www.gstatic.com', 'cdnjs.cloudflare.com'].includes(url.hostname);
 
   if (isLocal) {
-    // Cache-first pour nos assets
+    // Réseau-d'abord avec repli cache : les déploiements sont visibles
+    // dès la prochaine visite en ligne (le cache sert uniquement hors
+    // ligne). Chaque réponse réussie rafraîchit le cache.
     event.respondWith(
-      caches.match(event.request).then((hit) => hit || fetch(event.request).then((res) => {
+      fetch(event.request).then((res) => {
         const copy = res.clone();
         caches.open(CACHE).then((c) => c.put(event.request, copy)).catch(() => {});
         return res;
-      }))
+      }).catch(() => caches.match(event.request).then((hit) => hit || caches.match('./index.html')))
     );
   } else if (isCDN) {
     // Network-first avec repli cache (les CDN évoluent)
