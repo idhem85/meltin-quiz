@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "description": "Quiz & icebreakers interactifs en temps réel",
   "scripts": {
-    "build": "esbuild js/app.js --bundle --outfile=dist/app.js --loader:.js=jsx --jsx=automatic --minify --sourcemap",
-    "dev": "esbuild js/app.js --bundle --outfile=dist/app.js --loader:.js=jsx --jsx=automatic --sourcemap --watch"
+    "build": "node build-dist.mjs",
+    "dev": "node build-dist.mjs --watch"
   },
   "devDependencies": {
     "esbuild": "^0.20.0"
