@@ -1,6 +1,8 @@
 # 🧠 MELTIN QUIZ
 
-> **🌐 En ligne : https://idhem85.github.io/meltin-quiz/**
+> **🌐 En ligne : https://meltin-quiz.pages.dev** (Cloudflare Pages) · https://idhem85.github.io/meltin-quiz/ (miroir GitHub Pages)
+>
+> Build : `npm run build` → `dist/` (esbuild, JSX précompilé, aucun Babel runtime).
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![PWA](https://img.shields.io/badge/PWA-Ready-blueviolet)](https://web.dev/progressive-web-apps/)
 [![Firebase](https://img.shields.io/badge/Backend-Firebase-orange)](https://firebase.google.com/)
