@@ -18,6 +18,7 @@ const LOCAL_ASSETS = [
   './js/core/results.js',
   './js/core/theme.js',
   './js/core/sync.js',
+  './js/core/audio.js',
   './js/ui/components.js',
   './js/views/home.js',
   './js/views/participant.js',

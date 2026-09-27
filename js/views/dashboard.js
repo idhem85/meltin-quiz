@@ -83,7 +83,7 @@
   }
 
   const newQuestion = (type) => {
-    const base = { phase: '', type, question: '' };
+    const base = { phase: '', type, question: '', seconds: 30 };
     if (type === 'mcq') return { ...base, options: ['Option 1', 'Option 2', '', ''] };
     if (type === 'word') return { ...base, placeholder: 'Votre réponse…', maxLen: 30 };
     if (type === 'number') return { ...base, unit: '', maxLen: 12, target: '' };
@@ -107,6 +107,17 @@
         <label className="dash-label">Phase</label>
         <input className="dash-input mb-3" value={q.phase || ''}
           onChange={(e) => onChange({ ...q, phase: e.target.value })} placeholder="Ex : Phase 1 — Le Réveil" list="ib-phases" />
+
+        <div className="grid sm:grid-cols-[1fr_auto] gap-3 mb-3">
+          <div>
+            <label className="dash-label">⏱ Durée (Big Quiz — 0 = pas de timer)</label>
+            <div className="flex items-center gap-2">
+              <input className="dash-input" type="number" min="0" max="300" value={q.seconds != null ? q.seconds : 0}
+                onChange={(e) => onChange({ ...q, seconds: Math.max(0, Math.min(300, Number(e.target.value) || 0)) })} />
+              <span className="text-xs shrink-0" style={{ color: 'var(--text-dim)' }}>secondes</span>
+            </div>
+          </div>
+        </div>
 
         <div className="grid sm:grid-cols-[1fr_auto] gap-3 mb-3">
           <div>
@@ -192,6 +203,18 @@
           </div>
         )}
       </div>
+    );
+  }
+
+  /* Interrupteur sons (persistant, partagé animateur/participants) */
+  function SoundToggle() {
+    const [on, setOn] = useState(window.IB.audio.enabled());
+    return (
+      <button onClick={() => { const v = !on; window.IB.audio.setEnabled(v); setOn(v); }}
+        className={'shrink-0 px-4 py-2 rounded-xl text-sm font-bold transition ' + (on ? 'bg-emerald-500/20 border border-emerald-400/40 text-emerald-300' : 'glass text-slate-400')}
+        title={on ? 'Couper les sons' : 'Activer les sons'}>
+        {on ? '🔊 Activés' : '🔇 Coupés'}
+      </button>
     );
   }
 
@@ -345,6 +368,15 @@
 
           {tab === 'quiz' && (
             <div className="space-y-4">
+              <div className="dash-card flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <h3 className="font-display font-bold text-sm">🔊 Sons & timer</h3>
+                  <p className="text-xs mt-0.5" style={{ color: 'var(--text-dim)' }}>
+                    Sons façon Kahoot + compte à rebours par question (champ « Durée »).
+                  </p>
+                </div>
+                <SoundToggle />
+              </div>
               <datalist id="ib-phases">{phases.map((p) => <option key={p} value={p} />)}</datalist>
               {quiz.map((q, i) => (
                 <QuestionEditor key={i} q={q} index={i} onChange={(nq) => updateQ(i, nq)} onDelete={() => deleteQ(i)} onMove={moveQ} />

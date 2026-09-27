@@ -34,6 +34,7 @@ const PLAIN_JS = [
   'js/core/results.js',
   'js/core/theme.js',
   'js/core/sync.js',
+  'js/core/audio.js',
 ];
 
 /* index.html → dist/index.html : retrait de Babel, scripts compilés */

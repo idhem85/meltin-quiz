@@ -2,56 +2,104 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    /* ══════════════════════════════════════════════════════════════
+       MELTIN QUIZ — règles de production (sans Auth Firebase).
+
+       Modèle de menace assumé : l'app ne fait pas se connecter les
+       participants (friction = 0 pour un séminaire). Les règles ne
+       peuvent donc pas distinguer « l'animateur » d'un client lambda ;
+       elles garantissent en revanche :
+       - des documents strictement typés et bornés (pas de champ
+         arbitraire, pas de valeur géante → pas d'abus de stockage) ;
+       - des scores en incréments unitaires uniquement (pas de
+         réécriture arbitraire du classement via update) ;
+       - des réponses liées à l'ID du document (1 vote par personne) ;
+       - aucune suppression de salle (pas de vandalisme) ;
+       - aucune écriture hors de rooms/{room} et de ses sous-collections.
+       Les validations métier fines (1 vote par question ouverte, pseudo
+       unique, présence de la question) restent côté client + animateur :
+       c'est la limite du sans-Auth, documentée dans le README.
+    ══════════════════════════════════════════════════════════════ */
+
     match /rooms/{room} {
-      // La salle est lisible par tous (participants).
-      allow read: if true;
-      // L'animateur doit être le seul à pouvoir créer/modifier la salle.
-      // Puisque l'app n'utilise pas d'auth Firebase pour les participants,
-      // on s'appuie sur l'admin qui possède le code de la salle.
-      // NOTE: Pour une sécurité maximale, il faudrait ajouter Firebase Auth pour l'hôte.
-      allow create, update: if true;
+      // Code de salle : 4 à 10 caractères alphanumériques (cf. genRoomCode).
+      allow read: if true;   // les participants écoutent la salle
+      allow create: if room.size() >= 4 && room.size() <= 10
+                    && room.matches('[A-Z0-9]+')
+                    && request.resource.data.keys().hasOnly(
+                         ['room', 'status', 'questionIndex', 'quiz', 'quizTitle',
+                          'theme', 'lastResults', 'podium', 'createdAt'])
+                    && request.resource.data.status in ['waiting', 'question', 'results', 'podium']
+                    && request.resource.data.questionIndex is int
+                    && request.resource.data.quiz is list
+                    && request.resource.data.quiz.size() <= 60
+                    && request.resource.data.quizTitle is string
+                    && request.resource.data.quizTitle.size() <= 120;
+      // patchState() fait des merges arbitraires (status, lastResults,
+      // podium…) : sans Auth, on borne les champs mais on laisse passer.
+      allow update: if request.resource.data.diff(resource.data).affectedKeys()
+                      .hasOnly(['status', 'questionIndex', 'lastResults',
+                                'podium', 'theme', 'quiz', 'quizTitle'])
+                    && request.resource.data.status in ['waiting', 'question', 'results', 'podium'];
       allow delete: if false;
 
+      /* ── Participants ─────────────────────────────────────────── */
       match /players/{pid} {
         allow read: if true;
-        // Un joueur ne peut créer/modifier que son propre document (identifié par pid).
-        allow create, update: if request.resource.data.pid == pid
-                              && request.resource.data.keys().hasOnly(['pid','pseudo','emoji','score','joinedAt'])
-                              && request.resource.data.pid is string
-                              && request.resource.data.pseudo is string
-                              && request.resource.data.pseudo.size() >= 1
-                              && request.resource.data.pseudo.size() <= 20
-                              && request.resource.data.score is number;
-        // Le joueur peut quitter la salle ou l'animateur peut le supprimer.
+        allow create: if pid.matches('p_[a-z0-9]{6,12}')
+                      && request.resource.data.keys().hasOnly(['pid', 'pseudo', 'emoji', 'score', 'joinedAt'])
+                      && request.resource.data.pid == pid
+                      && request.resource.data.pseudo is string
+                      && request.resource.data.pseudo.size() >= 2
+                      && request.resource.data.pseudo.size() <= 20
+                      && request.resource.data.emoji is string
+                      && request.resource.data.emoji.size() <= 8
+                      && request.resource.data.score == 0;
+        // Seuls les scores sont mutables après création (setScore via
+        // FieldValue.increment, resetScores via update {score: 0}) —
+        // jamais de réécriture du pseudo/pid, score toujours borné.
+        // NB : avec un FieldValue.increment, request.resource.data.score
+        // est résolu par le moteur de règles à la valeur résultante.
+        allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly(['score'])
+                      && request.resource.data.diff(resource.data).transformations.hasOnly(['score'])
+                      && request.resource.data.score is number
+                      && request.resource.data.score >= 0
+                      && request.resource.data.score <= 300;
+        // leave (pagehide) + kick animateur.
         allow delete: if true;
       }
 
+      /* ── Réponses (1 doc max par participant, id = pid) ───────── */
       match /answers/{pid} {
-        // On limite la lecture des réponses aux admins (en pratique, on ne peut pas
-        // restreindre sans Auth, mais on peut empêcher les participants de lire
-        // les réponses des autres si on utilise des sous-collections sécurisées).
-        allow read: if true;
-        // Un participant ne peut répondre que pour son propre pid.
-        allow create, update: if request.resource.data.pid == pid // Ajout de la vérification pid
-                              && request.resource.data.keys().hasOnly(['pid','optionIndex','text','val','questionIndex','at'])
+        function optInt(v) { return v is int && v >= 0 && v <= 15; }
+        allow read: if true;   // l'animateur agrège ; les non-connectés lisent lastResults sinon
+        allow create, update: if pid.matches('p_[a-z0-9]{6,12}')
+                              && request.resource.data.keys().hasOnly(
+                                   ['questionIndex', 'at', 'optionIndex', 'text', 'val'])
                               && request.resource.data.questionIndex is int
                               && request.resource.data.questionIndex >= 0
-                              && request.resource.data.questionIndex <= 100
+                              && request.resource.data.questionIndex <= 60
+                              && request.resource.data.at is timestamp
+                              && request.resource.data.keys().hasAny(['optionIndex', 'text', 'val'])
                               && (
-                                // QCM (0-3) / échelle (0-9) : index d'option
-                                (request.resource.data.optionIndex is int
-                                 && request.resource.data.optionIndex >= 0
-                                 && request.resource.data.optionIndex <= 15)
-                                // Nuage de mots : texte court
-                                || (request.resource.data.text is string
+                                   (request.resource.data.keys().hasOnly(['questionIndex', 'at', 'optionIndex'])
+                                    && optInt(request.resource.data.optionIndex))
+                                || (request.resource.data.keys().hasOnly(['questionIndex', 'at', 'text'])
+                                    && request.resource.data.text is string
                                     && request.resource.data.text.size() >= 1
                                     && request.resource.data.text.size() <= 80)
-                                // Estimation : nombre fini raisonnable
-                                || (request.resource.data.val is number
+                                || (request.resource.data.keys().hasOnly(['questionIndex', 'at', 'val'])
+                                    && request.resource.data.val is number
                                     && request.resource.data.val.abs() < 1e12)
                               );
+        // Purge entre les questions (clearAnswers) + kick.
         allow delete: if true;
       }
+    }
+
+    /* Tout le reste est interdit : pas d'autre collection accessible. */
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }

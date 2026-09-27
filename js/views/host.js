@@ -236,6 +236,49 @@
     );
   }
 
+  /* Big Quiz : anneau de compte à rebours (animateur). Le rendu est
+       local (1 Hz + sous-seconde en fin de course), jamais écrit en base. */
+  function TimerRing({ endsAt, seconds }) {
+    const [, force] = useState(0);
+    useEffect(() => {
+      if (!endsAt) return undefined;
+      let raf = 0, lastSec = -1;
+      const loop = () => {
+        const left = endsAt - Date.now();
+        const s = Math.ceil(left / 1000);
+        if (s !== lastSec) {
+          lastSec = s;
+          if (s > 0 && s <= 5) window.IB.audio.tick(s <= 2);
+        }
+        force((n) => n + 1);
+        raf = requestAnimationFrame(left > 0 ? loop : () => {});
+      };
+      raf = requestAnimationFrame(loop);
+      return () => cancelAnimationFrame(raf);
+    }, [endsAt]);
+    if (!endsAt) return null;
+    const totalMs = (seconds > 0 ? seconds : 30) * 1000;
+    const left = Math.max(0, endsAt - Date.now());
+    const secs = Math.ceil(left / 1000);
+    const urgent = secs <= 5;
+    const C = 2 * Math.PI * 54;
+    return (
+      <div className={'fixed top-5 right-5 z-30 ' + (urgent ? 'timer-urgent' : '')}>
+        <svg width="120" height="120" viewBox="0 0 120 120">
+          <circle cx="60" cy="60" r="54" fill="rgba(2,6,23,.55)" stroke="rgba(255,255,255,.08)" strokeWidth="8" />
+          <circle cx="60" cy="60" r="54" fill="none"
+            stroke={urgent ? '#f43f5e' : 'var(--accent, #22d3ee)'} strokeWidth="8" strokeLinecap="round"
+            strokeDasharray={C} strokeDashoffset={C * (1 - Math.min(1, left / totalMs))}
+            transform="rotate(-90 60 60)" style={{ transition: 'stroke-dashoffset .3s linear, stroke .3s' }} />
+        </svg>
+        <div className="absolute inset-0 flex flex-col items-center justify-center">
+          <span className={'font-display font-black text-3xl leading-none ' + (urgent ? 'text-rose-400' : 'text-cyan-300')}>{secs}</span>
+          <span className="text-[10px] uppercase tracking-widest" style={{ color: 'var(--text-dim)' }}>sec</span>
+        </div>
+      </div>
+    );
+  }
+
   /* ──────────────────────────────────────────────────────────────
      MODE PROJECTION — plein écran + masquage auto des contrôles.
      - requestProjection() : Fullscreen API + verrou paysage (mobiles)
@@ -370,27 +413,56 @@
     const qIndex = state ? state.questionIndex : -1;
     const status = state ? state.status : 'waiting';
 
+    /* Big Quiz : l'échéance du timer vit dans le doc de salle
+       (questionEndsAt). Les participants l'affichent en local — aucune
+       écriture supplémentaire côté Firebase. 0/null = pas de timer. */
+    const timerFor = (q) => (q && q.seconds > 0 ? q.seconds * 1000 : 0);
     const startQuestion = async (idx) => {
-      window.IB.sync.patchState(room, { status: 'question', questionIndex: idx, lastResults: null });
+      const secs = timerFor(quiz[idx]);
+      const patch = { status: 'question', questionIndex: idx, lastResults: null };
+      patch.questionEndsAt = secs ? Date.now() + secs : null;
+      window.IB.sync.patchState(room, patch);
+      if (secs) window.IB.audio.questionStart();
       await window.IB.sync.clearAnswers(room);
     };
+    /* Auto-clôture à l'échéance : ref compteur, un seul déclenchement.
+       La clôture n'attribue les points qu'aux réponses ARRIVÉES. */
+    const closedRef = useRef(-1);
+    useEffect(() => {
+      if (status !== 'question' || !state.questionEndsAt) return;
+      const endsAt = state.questionEndsAt;
+      if (closedRef.current === qIndex) return;
+      const iv = setInterval(() => {
+        if (Date.now() >= endsAt && closedRef.current !== qIndex) {
+          closedRef.current = qIndex;
+          window.IB.audio.timeUp();
+          closeVotes();
+        }
+      }, 250);
+      return () => clearInterval(iv);
+    }, [status, qIndex, state && state.questionEndsAt]);
     const closeVotes = async () => {
+      if (closedRef.current === -1) closedRef.current = qIndex;  // clôture manuelle : pas d'auto-double
       const q = quiz[qIndex];
       const results = R().computeResults(q, answersMap, qIndex);
-      window.IB.sync.patchState(room, { status: 'results', lastResults: results });
+      window.IB.sync.patchState(room, { status: 'results', lastResults: results, questionEndsAt: null });
       const winners = R().computeWinners(q, answersMap, qIndex);
       winners.forEach((pid) => window.IB.sync.setScore(room, pid, 1));
+      window.IB.audio.reveal();
     };
-    const nextQuestion = () => { qIndex + 1 < quiz.length ? startQuestion(qIndex + 1) : finishQuiz(); };
+    const nextQuestion = () => { closedRef.current = -1; qIndex + 1 < quiz.length ? startQuestion(qIndex + 1) : finishQuiz(); };
     const finishQuiz = async () => {
+      closedRef.current = -1;
       const sorted = [...players].sort((a, b) => (b.score || 0) - (a.score || 0));
       const podium = sorted.slice(0, 3).map((p) => ({ pid: p.pid, pseudo: p.pseudo, emoji: p.emoji, score: p.score || 0 }));
       window.IB.sync.patchState(room, { status: 'podium', podium, questionIndex: -1 });
+      window.IB.audio.fanfare();
     };
     const restart = async () => {
+      closedRef.current = -1;   // ré-arme l'auto-clôture pour la prochaine session
       await window.IB.sync.resetScores(room);
       await window.IB.sync.clearAnswers(room);
-      window.IB.sync.patchState(room, { status: 'waiting', questionIndex: -1, lastResults: null, podium: null });
+      window.IB.sync.patchState(room, { status: 'waiting', questionIndex: -1, lastResults: null, podium: null, questionEndsAt: null });
     };
     const kickPlayer = (p) => window.IB.sync.kick(room, p.pid);
 
@@ -414,6 +486,7 @@
       return (
         <Projection enabled={proj}>
           <HostQuestion q={currentQ} qIndex={qIndex} total={quiz.length} answerCount={answerCount} playerCount={players.length} />
+          <TimerRing endsAt={state.questionEndsAt} seconds={currentQ.seconds} />
           <HostControls phase="question" answersCount={answerCount} onClose={closeVotes} onRestart={restart} onExit={onExit} />
         </Projection>
       );

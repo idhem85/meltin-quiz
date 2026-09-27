@@ -49,6 +49,8 @@ IB.util = (() => {
     .map((q) => {
       const out = { type: q.type || 'mcq', question: String(q.question || '').slice(0, 300) };
       if (q.phase) out.phase = String(q.phase).slice(0, 80);
+      const secs = Number(q.seconds);
+      if (secs > 0) out.seconds = Math.min(Math.round(secs), 300);  // 0/absent = pas de timer
       if (q.type === 'mcq') out.options = (q.options || []).slice(0, 4).map((o) => String(o).slice(0, 80));
       if (q.type === 'mcq' && q.correctIndex != null) out.correctIndex = Number(q.correctIndex) || 0;
       if (q.type === 'word') { out.placeholder = String(q.placeholder || 'Votre réponse…').slice(0, 60); out.maxLen = Math.min(Number(q.maxLen) || 30, 80); }

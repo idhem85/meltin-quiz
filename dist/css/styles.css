@@ -187,6 +187,13 @@ h1, h2, .break-words { overflow-wrap: break-word; word-wrap: break-word; }
    qui épingle opacity à 1 sinon. */
 .host-controls.proj-hidden { opacity: 0 !important; pointer-events: none; }
 
+/* Big Quiz : anneau de timer en alerte (<= 5 s) */
+.timer-urgent { animation: timerPulse 1s ease-in-out infinite; }
+@keyframes timerPulse {
+  0%, 100% { transform: scale(1); filter: drop-shadow(0 0 6px rgba(244,63,94,.35)); }
+  50% { transform: scale(1.06); filter: drop-shadow(0 0 16px rgba(244,63,94,.65)); }
+}
+
 /* Podium mobile : blocs côte à côte plus étroits mais lisibles */
 @media (max-width: 420px) {
   .podium-col { width: 4.5rem; }

@@ -24,7 +24,7 @@ src = src.replace('href="manifest.webmanifest"', 'href="' + data_url + '"')
 
 # 3) JS classiques inline (config, data, core)
 for path in ['js/config.js', 'js/data/defaultQuiz.js', 'js/core/utils.js',
-             'js/core/results.js', 'js/core/theme.js', 'js/core/sync.js']:
+             'js/core/results.js', 'js/core/theme.js', 'js/core/sync.js', 'js/core/audio.js']:
     code = (ROOT / path).read_text(encoding='utf-8')
     tag = f'<script src="{path}"></script>'
     src = src.replace(tag, '<script>\n' + code + '\n</script>')
