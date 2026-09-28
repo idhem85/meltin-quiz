@@ -46,10 +46,12 @@
     return (
       <React.Fragment>
         <Toast toast={toast} />
+        <ErrorBoundary key={route + ':' + room}>
         {route === 'home' && <views.HomeScreen onJoin={goJoin} onCreate={goCreate} />}
         {route === 'join' && <views.ParticipantFlow room={room} showToast={showToast} onBack={goHome} />}
         {route === 'host' && <views.HostFlow room={room} showToast={showToast} onExit={goHome} />}
         {route === 'admin' && <views.Dashboard onBack={goHome} />}
+        </ErrorBoundary>
       </React.Fragment>
     );
   }

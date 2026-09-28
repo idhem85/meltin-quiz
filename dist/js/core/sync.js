@@ -42,6 +42,7 @@
   });
 
   function demoHost(room, cbs) {
+    if (!room) return () => {};   // transition de route : salle pas encore choisie
     demo.room = room; demo.isHost = true;
     demo.state = { room, status: 'waiting', questionIndex: -1, quiz: defQuiz(), quizTitle: window.IB_CONFIG.QUIZ_TITLE, theme: null, lastResults: null, podium: null };
     demo.players = {}; demo.answers = {};
@@ -64,6 +65,7 @@
   }
 
   function demoWatch(room, me, cbs) {
+    if (!room) return () => {};   // transition de route : salle pas encore choisie
     demo.room = room; demo.isHost = false;
     try { if (demo.channel) demo.channel.close(); } catch (e) {}
     demo.channel = new BroadcastChannel('icebreaker-demo-' + room);
@@ -147,8 +149,11 @@
     } catch (e) { return false; }
   };
 
+  /* Garde anti-crash : une salle vide (transition de route « ← Accueil »)
+     ferait jeter Firestore (« empty path ») et démonterait toute l'app. */
   const fbApi = {
     host(room, cbs) {
+      if (!room) return () => {};
       roomRef(room).get().then(async (snap) => {
         if (!snap.exists) {
           /* La salle embarque le quiz + thème OFFICIELS du cloud
@@ -180,6 +185,7 @@
       return () => { u1(); u2(); u3(); };
     },
     watchRoom(room, me, cbs) {
+      if (!room) return () => {};
       const unsub = roomRef(room).onSnapshot((snap) => cbs.onState(snap.exists ? snap.data() : null), (e) => cbs.onError('Lecture salle : ' + e.code));
       const t = setTimeout(() => {
         roomRef(room).get().then((s) => { if (!s.exists) cbs.onError('Salle "' + room + '" introuvable — vérifiez le code'); });
@@ -189,20 +195,23 @@
       return () => { unsub(); clearTimeout(t); window.removeEventListener('pagehide', leave); };
     },
     join(room, player) {
+      if (!room) return;
       roomRef(room).collection('players').doc(player.pid).set({
         ...player, score: 0, joinedAt: firebase.firestore.FieldValue.serverTimestamp(),
       }).catch(() => {});
     },
-    leave(room, pid) { roomRef(room).collection('players').doc(pid).delete().catch(() => {}); },
+    leave(room, pid) { if (!room) return; roomRef(room).collection('players').doc(pid).delete().catch(() => {}); },
     vote(room, pid, doc) {
+      if (!room) return;
       const clean = { questionIndex: doc.questionIndex, at: firebase.firestore.FieldValue.serverTimestamp() };
       if (doc.optionIndex != null) clean.optionIndex = doc.optionIndex;
       if (doc.text) clean.text = String(doc.text).slice(0, 80);
       if (doc.val != null && isFinite(doc.val)) clean.val = Number(doc.val);
       roomRef(room).collection('answers').doc(pid).set(clean).catch(() => {});
     },
-    patchState(room, patch) { roomRef(room).set(patch, { merge: true }).catch(() => {}); },
+    patchState(room, patch) { if (!room) return; roomRef(room).set(patch, { merge: true }).catch(() => {}); },
     async clearAnswers(room) {
+      if (!room) return;
       try {
         const snap = await roomRef(room).collection('answers').get();
         if (!snap.empty) {
@@ -213,9 +222,11 @@
       } catch (e) { /* non bloquant */ }
     },
     setScore(room, pid, delta) {
+      if (!room) return;
       roomRef(room).collection('players').doc(pid).update({ score: firebase.firestore.FieldValue.increment(delta) }).catch(() => {});
     },
     async resetScores(room) {
+      if (!room) return;
       try {
         const snap = await roomRef(room).collection('players').get();
         const batch = fs().batch();
@@ -223,7 +234,7 @@
         if (!snap.empty) await batch.commit();
       } catch (e) { /* non bloquant */ }
     },
-    kick(room, pid) { roomRef(room).collection('players').doc(pid).delete().catch(() => {}); },
+    kick(room, pid) { if (!room) return; roomRef(room).collection('players').doc(pid).delete().catch(() => {}); },
   };
 
   /* API unifiée : en ligne, quiz/thème du dashboard passent par le

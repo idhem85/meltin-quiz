@@ -31,6 +31,36 @@ function QrCode({ text, size }) {
   return <div ref={ref} className="qr-wrap inline-block rounded-xl bg-slate-900 p-2 border border-white/10 max-w-full" />;
 }
 
+/* Garde-fou : une vue qui plante affiche un écran d'erreur au lieu
+d'une page blanche (React 18 démonte sinon tout l'arbre). */
+class ErrorBoundary extends React.Component {
+  constructor(props) { super(props); this.state = { err: null }; }
+  static getDerivedStateFromError(err) { return { err }; }
+  componentDidCatch(err, info) { console.error('[MELTIN QUIZ] Crash de vue :', err, info && info.componentStack); }
+  render() {
+    if (!this.state.err) return this.props.children;
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center">
+        <div className="glass-strong p-8 max-w-sm w-full fade-in-up">
+          <div className="text-5xl mb-4">😵</div>
+          <h2 className="font-display text-xl font-bold mb-2">Oups, un pépin d'affichage</h2>
+          <p className="text-sm mb-5" style={{ color: 'var(--text-dim)' }}>
+            Un élément de l'écran a planté, mais l'application tourne toujours.
+          </p>
+          <button onClick={() => this.setState({ err: null })}
+            className="w-full py-3 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 font-bold text-white shadow-lg shadow-cyan-500/25 transition-all active:scale-[0.98]">
+            Réessayer
+          </button>
+          <button onClick={() => { location.hash = '#/'; }}
+            className="mt-3 w-full py-3 text-sm hover:text-slate-300 transition" style={{ color: 'var(--text-dim)' }}>
+            ← Retour à l'accueil
+          </button>
+        </div>
+      </div>
+    );
+  }
+}
+
 /* Toast flottant */
 function Toast({ toast }) {
   if (!toast) return null;
