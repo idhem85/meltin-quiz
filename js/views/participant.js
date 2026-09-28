@@ -188,8 +188,8 @@
               <input type="text" inputMode="decimal" value={text}
                 onChange={(e) => setText(e.target.value.replace(',', '.').replace(/[^0-9.]/g, ''))}
                 onKeyDown={(e) => { if (e.key === 'Enter' && text !== '' && isFinite(Number(text))) submit({ val: Number(text) }, -1); }}
-                placeholder="0" disabled={locked} autoFocus
-                className="flex-1 bg-black/30 border border-white/15 rounded-2xl px-5 py-4 text-3xl text-center font-display font-black focus:outline-none focus:border-amber-400/60 focus:ring-2 focus:ring-amber-400/20 transition disabled:opacity-50" />
+                placeholder="0" disabled={locked} autoFocus size="1"
+                className="min-w-0 flex-1 w-full bg-black/30 border border-white/15 rounded-2xl px-4 py-4 text-2xl sm:text-3xl text-center font-display font-black focus:outline-none focus:border-amber-400/60 focus:ring-2 focus:ring-amber-400/20 transition disabled:opacity-50" />
               {q.unit && <span className="text-xl font-bold shrink-0" style={{ color: 'var(--text-dim)' }}>{q.unit}</span>}
             </div>
             <button onClick={() => text !== '' && isFinite(Number(text)) && submit({ val: Number(text) }, -1)}

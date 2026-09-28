@@ -150,6 +150,7 @@ body {
 html, body { max-width: 100%; }
 img, svg, video, canvas, code, pre { max-width: 100%; }
 input, select, textarea, button { font-size: 16px; }  /* anti-zoom iOS */
+input, select, textarea { min-width: 0; max-width: 100%; }  /* anti-débordement flex : autorise le rétrécissement (<input> garde sinon sa largeur intrinsèque) */
 
 /* Texte long insecable : les questions/questions FR ne cassent pas seules */
 h1, h2, .break-words { overflow-wrap: break-word; word-wrap: break-word; }
