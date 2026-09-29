@@ -12,7 +12,7 @@ const ADMIN_PIN = '1234';
    est publique par design) : la SÉCURITÉ repose sur les règles
    Firestore — déployez firestore.rules (voir README).            */
 const FIREBASE_CONFIG = {
-  apiKey: "AIzaSyAdrNTmTe44uzke4W-jLZBH9BxRU8AweGY",
+  apiKey: "AIzaSyAdrNTmTe44uzke4W-jLZBH9BxRU8AWeGY",
   authDomain: "icebreak-quiz.firebaseapp.com",
   projectId: "icebreak-quiz",
   storageBucket: "icebreak-quiz.firebasestorage.app",
