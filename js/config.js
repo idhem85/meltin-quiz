@@ -20,8 +20,9 @@ const FIREBASE_CONFIG = {
   appId: "1:983086356172:web:9f74f76fa3d43b08ec9469",
 };
 
-/* Titre par défaut d'une session */
-const QUIZ_TITLE = 'Séminaire — 3 phases · 15 questions';
+/* Titre par défaut d'une session (modifiable au cas par cas via le
+   quiz cloud du dashboard) */
+const QUIZ_TITLE = 'Quiz interactif — créez le vôtre dans le dashboard 🎛️';
 
 /* ── Presets de thèmes (éditables via le dashboard #/admin) ────
    Chaque preset surcharge les variables CSS définies dans

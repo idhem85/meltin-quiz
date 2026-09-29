@@ -11,9 +11,10 @@
      re-rendre les grands écrans (perf vidéoprojecteur). */
   const ProjCtx = React.createContext({ hidden: false });
 
-  function HostLobby({ room, joinUrl, players, onKick, onStart, onExit, quizTitle }) {
+  function HostLobby({ room, joinUrl, players, onKick, onStart, onExit, quizTitle, questionCount }) {
     const [copied, setCopied] = useState(false);
     const [search, setSearch] = useState('');
+    const noQuestions = !questionCount;
     // Plafond de rendu : 150 chips max (le compteur, lui, reste exact).
     const MAX_CHIPS = 150;
     const filtered = search.trim()
@@ -93,10 +94,22 @@
                 )}
               </div>
             )}
-            <button onClick={onStart}
-              className="mt-6 w-full py-4 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 font-bold text-lg text-white shadow-lg shadow-emerald-500/25 transition-all active:scale-[0.99]">
-              ▶ Lancer la question 1
-            </button>
+            {noQuestions ? (
+              <div className="mt-6 glass rounded-2xl p-4 text-center">
+                <p className="text-sm mb-3" style={{ color: 'var(--text-dim)' }}>
+                  Aucune question dans ce quiz — ajoutez-en dans le dashboard avant de lancer.
+                </p>
+                <button onClick={() => { location.hash = '#/admin'; }}
+                  className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 font-bold text-sm text-white shadow-lg shadow-emerald-500/25 transition-all active:scale-[0.98]">
+                  🎛️ Ouvrir le dashboard
+                </button>
+              </div>
+            ) : (
+              <button onClick={onStart}
+                className="mt-6 w-full py-4 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 font-bold text-lg text-white shadow-lg shadow-emerald-500/25 transition-all active:scale-[0.99]">
+                ▶ Lancer la question 1
+              </button>
+            )}
           </div>
         </div>
 
@@ -502,7 +515,7 @@
     }
     return (
       <HostLobby room={room} joinUrl={U().joinUrlFor(room)} players={players}
-        onKick={kickPlayer} onStart={() => startQuestion(0)} onExit={onExit} quizTitle={state && state.quizTitle} />
+        onKick={kickPlayer} onStart={() => startQuestion(0)} onExit={onExit} quizTitle={state && state.quizTitle} questionCount={quiz.length} />
     );
   }
 

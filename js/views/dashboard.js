@@ -349,6 +349,14 @@
     };
     const addQ = (type) => setQuiz([...quiz, newQuestion(type)]);
 
+    /* Tout effacer : confirmation, purge locale + cloud (le thème est
+       conservé). Chaque organisateur part de zéro. */
+    const clearAll = () => {
+      if (quiz.length === 0) return;
+      if (!window.confirm('Effacer les ' + quiz.length + ' question' + (quiz.length > 1 ? 's' : '') + ' ? Cette action est définitive (pensez à exporter avant).')) return;
+      save([], theme);
+    };
+
     const exportJson = () => {
       const blob = new Blob([JSON.stringify({ quiz, theme }, null, 2)], { type: 'application/json' });
       const a = document.createElement('a');
@@ -398,6 +406,20 @@
 
           {tab === 'quiz' && (
             <div className="space-y-4">
+              {quiz.length === 0 && (
+                <div className="dash-card text-center py-10 fade-in-up">
+                  <div className="text-5xl mb-3">📝</div>
+                  <h3 className="font-display font-bold text-lg mb-1">Aucune question pour l'instant</h3>
+                  <p className="text-sm mb-5" style={{ color: 'var(--text-dim)' }}>
+                    Créez vos questions une par une, ou importez un JSON existant (onglet Import / Export).
+                  </p>
+                  <div className="flex gap-2 flex-wrap justify-center">
+                    {[['mcq', '＋ QCM'], ['word', '＋ Nuage'], ['number', '＋ Estimation'], ['scale', '＋ Échelle']].map(([t, label]) => (
+                      <button key={t} onClick={() => addQ(t)} className="btn-primary">{label}</button>
+                    ))}
+                  </div>
+                </div>
+              )}
               <div className="dash-card flex items-center justify-between gap-3">
                 <div className="min-w-0">
                   <h3 className="font-display font-bold text-sm">🔊 Sons & timer</h3>
@@ -416,6 +438,14 @@
                   <button key={t} onClick={() => addQ(t)} className="btn-ghost">{label}</button>
                 ))}
               </div>
+              {quiz.length > 0 && (
+                <div className="pt-2">
+                  <button onClick={clearAll}
+                    className="text-xs text-rose-300/70 hover:text-rose-300 underline underline-offset-2 transition">
+                    🗑 Tout effacer ({quiz.length} question{quiz.length > 1 ? 's' : ''})
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
@@ -434,8 +464,8 @@
                   onChange={(e) => setImportText(e.target.value)} placeholder='{"quiz": [...], "theme": {...}}' />
                 {importErr && <p className="text-rose-300 text-sm mt-2">{importErr}</p>}
                 <button onClick={importJson} disabled={!importText.trim()} className="btn-primary mt-3">⬆️ Importer</button>
-                <button onClick={() => { const qz = U().resetQuiz(); setQuiz(qz); }}
-                  className="btn-ghost btn-danger ml-2">↺ Restaurer le quiz par défaut</button>
+                <button onClick={clearAll}
+                  className="btn-ghost btn-danger ml-2">🗑 Tout effacer</button>
               </div>
             </div>
           )}
