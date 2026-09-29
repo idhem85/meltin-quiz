@@ -176,6 +176,7 @@
 
   /* Garde anti-crash : une salle vide (transition de route « ← Accueil »)
      ferait jeter Firestore (« empty path ») et démonterait toute l'app. */
+  const fbApi = {
     host(room, cbs) {
       if (!room) return () => {};
       /* La salle embarque le quiz du dashboard (lecture authentifiée) :
