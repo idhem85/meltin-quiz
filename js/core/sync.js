@@ -133,40 +133,67 @@
      Un document unique config/dashboard porte le quiz et le thème
      officiels : édités depuis n'importe quel appareil, lus partout.
      Le localStorage reste un cache local de repli (mode démo). */
+  /* Auth anonyme : SEULS les accès à config/dashboard l'exigent
+     (règles Firestore) — le dashboard PIN et la création de salle
+     signent anonymement ; participants et votes restent sans compte. */
+  let anonAuthPromise = null;
+  const ensureAnonAuth = () => {
+    if (firebase.auth().currentUser) return Promise.resolve();
+    if (!anonAuthPromise) {
+      anonAuthPromise = firebase.auth().signInAnonymously().catch((e) => {
+        anonAuthPromise = null;                     // réessayable au prochain appel
+        if (e && (e.code === 'auth/operation-not-allowed' || e.code === 'auth/admin-restricted-operation')) {
+          console.warn('[MELTIN QUIZ] Auth anonyme désactivée sur le projet Firebase — activez-la sur : console.firebase.google.com/project/icebreak-quiz/authentication/providers');
+        } else {
+          console.warn('[MELTIN QUIZ] Sign-in anonyme impossible :', e && e.code);
+        }
+        throw e;
+      });
+    }
+    return anonAuthPromise;
+  };
   const configRef = () => fs().collection('config').doc('dashboard');
   const fbConfigLoad = async () => {
     try {
+      await ensureAnonAuth();
       const snap = await configRef().get();
       if (!snap.exists) return null;
       const d = snap.data();
       return { quiz: Array.isArray(d.quiz) ? d.quiz : null, theme: d.theme || null, updatedAt: d.updatedAt || null };
     } catch (e) { return null; }
   };
+  /* Retour : true (cloud) | 'auth' (auth anonyme indisponible) | false */
   const fbConfigSave = async (quiz, theme) => {
     try {
+      await ensureAnonAuth();
       await configRef().set({ quiz, theme, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
       return true;
-    } catch (e) { return false; }
+    } catch (e) {
+      if (e && (e.code === 'auth/operation-not-allowed' || e.code === 'auth/admin-restricted-operation')) return 'auth';
+      return false;
+    }
   };
 
   /* Garde anti-crash : une salle vide (transition de route « ← Accueil »)
      ferait jeter Firestore (« empty path ») et démonterait toute l'app. */
-  const fbApi = {
     host(room, cbs) {
       if (!room) return () => {};
+      /* La salle embarque le quiz du dashboard (lecture authentifiée) :
+         sign-in anonyme en parallèle des snapshots publics — si l'auth
+         échoue, repli silencieux sur le quiz local. */
+      const boot = ensureAnonAuth().catch(() => {});
       roomRef(room).get().then(async (snap) => {
         if (!snap.exists) {
-          /* La salle embarque le quiz + thème OFFICIELS du cloud
-             (repli : localStorage, puis défauts). */
           let quiz0 = null, theme0 = null;
           try {
+            await boot;
             const cfg = await configRef().get();
             if (cfg.exists) {
               const d = cfg.data();
               if (Array.isArray(d.quiz) && d.quiz.length) quiz0 = d.quiz;
               if (d.theme) theme0 = d.theme;
             }
-          } catch (e) { /* hors ligne : repli local */ }
+          } catch (e) { /* hors ligne ou auth KO : repli local */ }
           roomRef(room).set({
             room, status: 'waiting', questionIndex: -1,
             quiz: quiz0 || defQuiz(), quizTitle: window.IB_CONFIG.QUIZ_TITLE, theme: theme0,

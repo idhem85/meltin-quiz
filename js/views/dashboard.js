@@ -333,8 +333,10 @@
       if (window.IB.sync.saveDashboard) {
         setSaveState('saving…');
         const ok = await window.IB.sync.saveDashboard(cleanQuiz, nextTheme);
-        setSaveState(ok ? '✅ cloud' : '⚠️ local seul');
-        setTimeout(() => setSaveState(''), 2500);
+        setSaveState(ok === true ? '✅ cloud'
+          : ok === 'auth' ? '✗ auth cloud indisponible'
+          : '⚠️ local seul');
+        setTimeout(() => setSaveState(''), 3500);
       }
     };
 

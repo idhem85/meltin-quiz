@@ -110,9 +110,12 @@ service cloud.firestore {
 
     /* ── Configuration officielle du dashboard (quiz + thème) ──
        Un seul document, éditable depuis n'importe quel appareil :
-       c'est la source de vérité, le localStorage n'est qu'un cache. */
+       c'est la source de vérité, le localStorage n'est qu'un cache.
+       Protégé par Firebase Anonymous Auth : seul le dashboard (PIN)
+       et la création de salle y accèdent — les participants n'en ont
+       jamais besoin. N'importe quel client non authentifié est rejeté. */
     match /config/dashboard {
-      allow read: if true;
+      allow read, write: if request.auth != null;
       function validTheme(t) {
         return !(t is map) || (t.keys().hasOnly(['preset', 'vars'])
           && (!('preset' in t) || (t.preset is string && t.preset.size() <= 40))
